@@ -77,11 +77,11 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  const Text("Login", 
-                    style: TextStyle(color: Colors.white, fontSize: 40, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+                  const Text("Login",
+                      style: TextStyle(color: Colors.white, fontSize: 40, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
                   const SizedBox(height: 5),
-                  Text("i-EMS Management System", 
-                    style: TextStyle(color: Colors.blue.shade100, fontSize: 16)),
+                  Text("i-EMS Management System",
+                      style: TextStyle(color: Colors.blue.shade100, fontSize: 16)),
                 ],
               ),
             ),
@@ -91,8 +91,8 @@ class _LoginPageState extends State<LoginPage> {
                 decoration: const BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(50), 
-                    topRight: Radius.circular(50)
+                      topLeft: Radius.circular(50),
+                      topRight: Radius.circular(50)
                   ),
                 ),
                 child: SingleChildScrollView(
@@ -189,15 +189,15 @@ class _LoginPageState extends State<LoginPage> {
                             borderRadius: BorderRadius.circular(15),
                           ),
                           child: const Center(
-                            child: Text("SIGN IN", 
-                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 1.1)),
+                            child: Text("SIGN IN",
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 1.1)),
                           ),
                         ),
                         const SizedBox(height: 25),
                         TextButton(
                           onPressed: () {},
-                          child: const Text("Forgot Password?", 
-                            style: TextStyle(color: Colors.blue, fontWeight: FontWeight.w500)),
+                          child: const Text("Forgot Password?",
+                              style: TextStyle(color: Colors.blue, fontWeight: FontWeight.w500)),
                         ),
                       ],
                     ),
