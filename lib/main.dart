@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:i_ems/db_con.dart';
+import 'package:i_ems/pages/admin_home_page.dart';
 import 'package:i_ems/pages/home_page.dart';
 import 'package:i_ems/pages/login_page.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Initialize MongoDB connection
-  try {
-    await MongoDatabase.connect();
-  } catch (e) {
-    print("Error connecting to database: $e");
-  }
+
+  // Initialize Supabase
+  await Supabase.initialize(
+    url: 'https://bcjqdypdsmegtyxaassg.supabase.co',
+    anonKey: 'sb_publishable_YDLpEFmiASv6YiAnpHHfBQ_M-e56JqS',
+  );
 
   runApp(const MyApp());
 }
@@ -32,6 +32,14 @@ class MyApp extends StatelessWidget {
       routes: {
         '/login': (context) => const LoginPage(),
         '/home': (context) => const HomePage(),
+        '/admin': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments
+              as Map<String, dynamic>?;
+          return AdminHomePage(
+            username: args?['username'] ?? 'Admin',
+            email: args?['email'] ?? '',
+          );
+        },
       },
     );
   }

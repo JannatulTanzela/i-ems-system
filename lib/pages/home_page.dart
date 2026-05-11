@@ -1,20 +1,45 @@
 import 'package:flutter/material.dart';
+import 'package:i_ems/auth_service.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
   @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  final AuthService _authService = AuthService();
+
+  Future<void> _logout() async {
+    try {
+      await _authService.logout();
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/login');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Logout failed: $e')),
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final Map<String, dynamic>? args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    final Map<String, dynamic>? args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     final String role = args?['role'] ?? 'Student';
     final String username = args?['username'] ?? 'User';
+    final String email = args?['email'] ?? '';
 
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.blue.shade800,
-        title: const Text('i-EMS Dashboard', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text('i-EMS Dashboard',
+            style: TextStyle(
+                color: Colors.white, fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_none, color: Colors.white),
@@ -22,7 +47,7 @@ class HomePage extends StatelessWidget {
           ),
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.white),
-            onPressed: () => Navigator.pushReplacementNamed(context, '/login'),
+            onPressed: _logout,
           )
         ],
       ),
@@ -31,7 +56,8 @@ class HomePage extends StatelessWidget {
           children: [
             UserAccountsDrawerHeader(
               decoration: BoxDecoration(color: Colors.blue.shade800),
-              accountName: Text(username, style: const TextStyle(fontWeight: FontWeight.bold)),
+              accountName:
+                  Text(username, style: const TextStyle(fontWeight: FontWeight.bold)),
               accountEmail: Text(role),
               currentAccountPicture: const CircleAvatar(
                 backgroundColor: Colors.white,
@@ -41,19 +67,27 @@ class HomePage extends StatelessWidget {
             ListTile(
               leading: const Icon(Icons.dashboard),
               title: const Text("Dashboard"),
-              onTap: () {},
+              onTap: () {
+                Navigator.pop(context);
+              },
             ),
             ListTile(
               leading: const Icon(Icons.person_outline),
               title: const Text("Profile"),
-              onTap: () {},
+              onTap: () {
+                Navigator.pop(context);
+              },
             ),
             const Spacer(),
             const Divider(),
             ListTile(
               leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text("Logout", style: TextStyle(color: Colors.red)),
-              onTap: () => Navigator.pushReplacementNamed(context, '/login'),
+              title: const Text("Logout",
+                  style: TextStyle(color: Colors.red)),
+              onTap: () {
+                Navigator.pop(context);
+                _logout();
+              },
             ),
             const SizedBox(height: 20),
           ],
@@ -76,19 +110,27 @@ class HomePage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("Welcome Back,", style: TextStyle(color: Colors.blue.shade100, fontSize: 16)),
+                  Text("Welcome Back,",
+                      style: TextStyle(
+                          color: Colors.blue.shade100, fontSize: 16)),
                   const SizedBox(height: 5),
-                  Text(username, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                  Text(username,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold)),
                   const SizedBox(height: 10),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
                       "Role: $role",
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+                      style: const TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.w500),
                     ),
                   ),
                 ],
@@ -99,7 +141,9 @@ class HomePage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text("Quick Actions", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Text("Quick Actions",
+                      style: TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 15),
                   _buildRoleSpecificGrid(role),
                 ],
