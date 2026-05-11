@@ -59,28 +59,15 @@ class _LoginPageState extends State<LoginPage> {
         if (result['role'].toString().toLowerCase() ==
             _selectedRole.toLowerCase()) {
           if (mounted) {
-            // Route based on role
-            if (result['role'] == 'Admin') {
-              Navigator.pushReplacementNamed(
-                context,
-                '/admin',
-                arguments: {
-                  'role': result['role'],
-                  'username': result['fullName'],
-                  'email': result['email'],
-                },
-              );
-            } else {
-              Navigator.pushReplacementNamed(
-                context,
-                '/home',
-                arguments: {
-                  'role': result['role'],
-                  'username': result['fullName'],
-                  'email': result['email'],
-                },
-              );
-            }
+            Navigator.pushReplacementNamed(
+              context,
+              '/home',
+              arguments: {
+                'role': result['role'],
+                'username': result['fullName'],
+                'email': result['email'],
+              },
+            );
           }
         } else {
           _showMessage(
