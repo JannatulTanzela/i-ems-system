@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:i_ems/auth_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -13,6 +14,8 @@ class _LoginPageState extends State<LoginPage> {
   String _selectedRole = 'Student';
   final List<String> _roles = ['Admin', 'Student', 'Teacher'];
   bool _obscurePassword = true;
+  bool _isLoading = false;
+  final AuthService _authService = AuthService();
 
   IconData _getRoleIcon(String role) {
     switch (role) {
@@ -27,22 +30,73 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  void _login() {
+  void _showMessage(String message, bool isSuccess) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isSuccess ? Colors.green : Colors.redAccent,
+      ),
+    );
+  }
+
+  Future<void> _login() async {
     if (_usernameController.text.isEmpty || _passwordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter username and password'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
+      _showMessage('Please enter username and password', false);
       return;
     }
 
-    Navigator.pushReplacementNamed(
-      context,
-      '/home',
-      arguments: {'role': _selectedRole, 'username': _usernameController.text},
-    );
+    setState(() => _isLoading = true);
+
+    try {
+      // Try to login with username (email or username field)
+      var result = await _authService.loginWithUsername(
+        username: _usernameController.text,
+        password: _passwordController.text,
+      );
+
+      if (result != null && result['success']) {
+        // Verify role matches selected role
+        if (result['role'].toString().toLowerCase() ==
+            _selectedRole.toLowerCase()) {
+          if (mounted) {
+            // Route based on role
+            if (result['role'] == 'Admin') {
+              Navigator.pushReplacementNamed(
+                context,
+                '/admin',
+                arguments: {
+                  'role': result['role'],
+                  'username': result['fullName'],
+                  'email': result['email'],
+                },
+              );
+            } else {
+              Navigator.pushReplacementNamed(
+                context,
+                '/home',
+                arguments: {
+                  'role': result['role'],
+                  'username': result['fullName'],
+                  'email': result['email'],
+                },
+              );
+            }
+          }
+        } else {
+          _showMessage(
+              'Role mismatch. You are registered as ${result['role']}',
+              false);
+        }
+      } else {
+        _showMessage(result?['message'] ?? 'Login failed', false);
+      }
+    } catch (e) {
+      _showMessage('Error: ${e.toString()}', false);
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   @override
@@ -181,23 +235,31 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                         const SizedBox(height: 40),
                         MaterialButton(
-                          onPressed: _login,
+                          onPressed: _isLoading ? null : _login,
                           height: 55,
                           color: Colors.blue.shade800,
                           elevation: 5,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(15),
                           ),
-                          child: const Center(
-                            child: Text("SIGN IN",
-                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 1.1)),
+                          child: Center(
+                            child: _isLoading
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                          Colors.white),
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Text("SIGN IN",
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                        letterSpacing: 1.1)),
                           ),
-                        ),
-                        const SizedBox(height: 25),
-                        TextButton(
-                          onPressed: () {},
-                          child: const Text("Forgot Password?",
-                              style: TextStyle(color: Colors.blue, fontWeight: FontWeight.w500)),
                         ),
                       ],
                     ),
