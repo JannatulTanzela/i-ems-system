@@ -10,8 +10,10 @@ class AdminStudentsPage extends StatefulWidget {
 
 class _AdminStudentsPageState extends State<AdminStudentsPage> {
   final SupabaseClient _supabase = Supabase.instance.client;
-  List<Map<String, dynamic>> _students = [];
+  List<Map<String, dynamic>> _allStudents = [];
+  List<Map<String, dynamic>> _filteredStudents = [];
   bool _isLoading = true;
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -19,21 +21,50 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
     _fetchStudents();
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   Future<void> _fetchStudents() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
     try {
       final response = await _supabase.from('students').select(
         '*, profiles:user_id(email, full_name, username)',
       ).order('created_at', ascending: false);
 
+      if (!mounted) return;
       setState(() {
-        _students = List<Map<String, dynamic>>.from(response);
+        _allStudents = List<Map<String, dynamic>>.from(response);
+        _filterStudents(_searchController.text);
         _isLoading = false;
       });
     } catch (e) {
+      debugPrint('Fetch Error: $e');
       _showError('Failed to load students: $e');
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _filterStudents(String query) {
+    setState(() {
+      if (query.isEmpty) {
+        _filteredStudents = _allStudents;
+      } else {
+        _filteredStudents = _allStudents.where((student) {
+          final fullName = (student['profiles']?['full_name'] ?? '').toString().toLowerCase();
+          final regNo = (student['registration_number'] ?? '').toString().toLowerCase();
+          final rollNo = (student['roll_number'] ?? '').toString().toLowerCase();
+          final searchLower = query.toLowerCase();
+          
+          return fullName.contains(searchLower) || 
+                 regNo.contains(searchLower) || 
+                 rollNo.contains(searchLower);
+        }).toList();
+      }
+    });
   }
 
   void _showError(String message) {
@@ -56,18 +87,12 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
       builder: (context) => _StudentFormDialog(
         onSubmit: (data) async {
           try {
-            // Note: signUp will sign out the current user and sign in the new one 
-            // unless 'emailConfirm' is enabled and we handle it, or we use a custom function.
-            // For this project, we assume the Supabase config allows this or it's handled via Edge Functions.
-            // A better way would be using a service role, but that's not safe on client.
-            
             final authResponse = await _supabase.auth.signUp(
               email: data['email'],
               password: data['password'],
             );
 
             if (authResponse.user != null) {
-              // Create profile
               await _supabase.from('profiles').insert({
                 'id': authResponse.user!.id,
                 'email': data['email'],
@@ -76,7 +101,6 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                 'username': data['username'],
               });
 
-              // Create student record
               await _supabase.from('students').insert({
                 'user_id': authResponse.user!.id,
                 'registration_number': data['registration_number'],
@@ -107,13 +131,11 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
         student: student,
         onSubmit: (data) async {
           try {
-            // Update profile
             await _supabase.from('profiles').update({
               'full_name': data['full_name'],
               'username': data['username'],
             }).eq('id', student['user_id']);
 
-            // Update student record
             await _supabase.from('students').update({
               'registration_number': data['registration_number'],
               'roll_number': data['roll_number'],
@@ -148,11 +170,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
           ElevatedButton(
             onPressed: () async {
               try {
-                // Delete from students table first
                 await _supabase.from('students').delete().eq('id', studentId);
-                // Optionally delete from profiles if cascading is not set
-                // await _supabase.from('profiles').delete().eq('id', userId);
-                
                 _showSuccess('Student deleted successfully!');
                 _fetchStudents();
                 if (mounted) Navigator.pop(context);
@@ -171,71 +189,89 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent, // Let the parent handle background
+      backgroundColor: Colors.transparent,
       body: RefreshIndicator(
         onRefresh: _fetchStudents,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Students',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.blue.shade800,
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Students',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue.shade800,
+                        ),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: _addStudent,
+                        icon: const Icon(Icons.add),
+                        label: const Text('Add Student'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue.shade800,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                    ],
                   ),
-                  ElevatedButton.icon(
-                    onPressed: _addStudent,
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add Student'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue.shade800,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  const SizedBox(height: 15),
+                  TextField(
+                    controller: _searchController,
+                    onChanged: _filterStudents,
+                    decoration: InputDecoration(
+                      hintText: 'Search by Name, Reg No or Roll No...',
+                      prefixIcon: const Icon(Icons.search),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 0),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
-              _isLoading
-                  ? const Center(child: Padding(
-                      padding: EdgeInsets.only(top: 50.0),
-                      child: CircularProgressIndicator(),
-                    ))
-                  : _students.isEmpty
+            ),
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _filteredStudents.isEmpty
                       ? Center(
-                          child: Padding(
-                            padding: const EdgeInsets.only(top: 50.0),
-                            child: Column(
-                              children: [
-                                Icon(Icons.people_outline, size: 64, color: Colors.grey.shade400),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'No students found',
-                                  style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
-                                ),
-                              ],
-                            ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.people_outline, size: 64, color: Colors.grey.shade400),
+                              const SizedBox(height: 16),
+                              Text(
+                                _allStudents.isEmpty ? 'No students found' : 'No matching students',
+                                style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
+                              ),
+                            ],
                           ),
                         )
                       : ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: _students.length,
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          itemCount: _filteredStudents.length,
                           itemBuilder: (context, index) {
-                            final student = _students[index];
+                            final student = _filteredStudents[index];
                             return _buildStudentCard(student);
                           },
                         ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -476,12 +512,15 @@ class _StudentFormDialogState extends State<_StudentFormDialog> {
           ),
           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         ),
-        validator: required ? (value) {
-          if (value == null || value.isEmpty) {
+        validator: (value) {
+          if (required && (value == null || value.isEmpty)) {
             return 'Please enter $label';
           }
+          if (isPassword && value != null && value.isNotEmpty && value.length < 6) {
+            return 'Password must be at least 6 characters';
+          }
           return null;
-        } : null,
+        },
       ),
     );
   }

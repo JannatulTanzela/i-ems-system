@@ -475,12 +475,15 @@ class _TeacherFormDialogState extends State<_TeacherFormDialog> {
           ),
           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         ),
-        validator: required ? (value) {
-          if (value == null || value.isEmpty) {
+        validator: (value) {
+          if (required && (value == null || value.isEmpty)) {
             return 'Please enter $label';
           }
+          if (isPassword && value != null && value.isNotEmpty && value.length < 6) {
+            return 'Password must be at least 6 characters';
+          }
           return null;
-        } : null,
+        },
       ),
     );
   }

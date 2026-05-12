@@ -25,6 +25,28 @@ class _HomePageState extends State<HomePage> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkRoleAndRedirect();
+    });
+  }
+
+  void _checkRoleAndRedirect() {
+    final Map<String, dynamic>? args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    final String role = args?['role'] ?? 'Student';
+    
+    if (role.toLowerCase() == 'admin') {
+      Navigator.pushReplacementNamed(
+        context,
+        '/admin',
+        arguments: args,
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final Map<String, dynamic>? args =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;

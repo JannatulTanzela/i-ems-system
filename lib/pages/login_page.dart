@@ -59,9 +59,14 @@ class _LoginPageState extends State<LoginPage> {
         if (result['role'].toString().toLowerCase() ==
             _selectedRole.toLowerCase()) {
           if (mounted) {
+            String route = '/home';
+            if (result['role'].toString().toLowerCase() == 'admin') {
+              route = '/admin';
+            }
+            
             Navigator.pushReplacementNamed(
               context,
-              '/home',
+              route,
               arguments: {
                 'role': result['role'],
                 'username': result['fullName'],
