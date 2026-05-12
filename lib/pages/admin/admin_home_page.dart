@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:i_ems/auth_service.dart';
-import 'package:i_ems/pages/admin_students_page.dart';
-import 'package:i_ems/pages/admin_teachers_page.dart';
+import 'admin_students_page.dart';
+import 'admin_teachers_page.dart';
 
 class AdminHomePage extends StatefulWidget {
   final String username;

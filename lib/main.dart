@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:i_ems/pages/admin_home_page.dart';
+import 'package:i_ems/pages/admin/admin_home_page.dart';
 import 'package:i_ems/pages/home_page.dart';
 import 'package:i_ems/pages/login_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';

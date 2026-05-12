@@ -20,10 +20,11 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
   }
 
   Future<void> _fetchStudents() async {
+    setState(() => _isLoading = true);
     try {
       final response = await _supabase.from('students').select(
-        '*, profiles:user_id(email, full_name, role)',
-      );
+        '*, profiles:user_id(email, full_name, username)',
+      ).order('created_at', ascending: false);
 
       setState(() {
         _students = List<Map<String, dynamic>>.from(response);
@@ -36,12 +37,14 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
   }
 
   void _showError(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
 
   void _showSuccess(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: Colors.green),
     );
@@ -53,7 +56,11 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
       builder: (context) => _StudentFormDialog(
         onSubmit: (data) async {
           try {
-            // Create auth user
+            // Note: signUp will sign out the current user and sign in the new one 
+            // unless 'emailConfirm' is enabled and we handle it, or we use a custom function.
+            // For this project, we assume the Supabase config allows this or it's handled via Edge Functions.
+            // A better way would be using a service role, but that's not safe on client.
+            
             final authResponse = await _supabase.auth.signUp(
               email: data['email'],
               password: data['password'],
@@ -100,6 +107,13 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
         student: student,
         onSubmit: (data) async {
           try {
+            // Update profile
+            await _supabase.from('profiles').update({
+              'full_name': data['full_name'],
+              'username': data['username'],
+            }).eq('id', student['user_id']);
+
+            // Update student record
             await _supabase.from('students').update({
               'registration_number': data['registration_number'],
               'roll_number': data['roll_number'],
@@ -125,16 +139,20 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Student'),
-        content: const Text('Are you sure you want to delete this student?'),
+        content: const Text('Are you sure you want to delete this student? This action cannot be undone.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () async {
               try {
+                // Delete from students table first
                 await _supabase.from('students').delete().eq('id', studentId);
+                // Optionally delete from profiles if cascading is not set
+                // await _supabase.from('profiles').delete().eq('id', userId);
+                
                 _showSuccess('Student deleted successfully!');
                 _fetchStudents();
                 if (mounted) Navigator.pop(context);
@@ -142,7 +160,8 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                 _showError('Error deleting student: $e');
               }
             },
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            child: const Text('Delete'),
           ),
         ],
       ),
@@ -152,54 +171,71 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Students Management',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blue.shade800,
+      backgroundColor: Colors.transparent, // Let the parent handle background
+      body: RefreshIndicator(
+        onRefresh: _fetchStudents,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Students',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue.shade800,
+                    ),
                   ),
-                ),
-                ElevatedButton.icon(
-                  onPressed: _addStudent,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add Student'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue.shade800,
-                    foregroundColor: Colors.white,
+                  ElevatedButton.icon(
+                    onPressed: _addStudent,
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add Student'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue.shade800,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _students.isEmpty
-                    ? Center(
-                        child: Text(
-                          'No students found',
-                          style: TextStyle(color: Colors.grey.shade600),
+                ],
+              ),
+              const SizedBox(height: 20),
+              _isLoading
+                  ? const Center(child: Padding(
+                      padding: EdgeInsets.only(top: 50.0),
+                      child: CircularProgressIndicator(),
+                    ))
+                  : _students.isEmpty
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 50.0),
+                            child: Column(
+                              children: [
+                                Icon(Icons.people_outline, size: 64, color: Colors.grey.shade400),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'No students found',
+                                  style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      : ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: _students.length,
+                          itemBuilder: (context, index) {
+                            final student = _students[index];
+                            return _buildStudentCard(student);
+                          },
                         ),
-                      )
-                    : ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: _students.length,
-                        itemBuilder: (context, index) {
-                          final student = _students[index];
-                          return _buildStudentCard(student);
-                        },
-                      ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -208,6 +244,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
   Widget _buildStudentCard(Map<String, dynamic> student) {
     return Card(
       margin: const EdgeInsets.only(bottom: 15),
+      elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -230,7 +267,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                       ),
                       const SizedBox(height: 5),
                       Text(
-                        'Reg: ${student['registration_number']}',
+                        'Reg: ${student['registration_number'] ?? 'N/A'}',
                         style: TextStyle(
                           color: Colors.grey.shade600,
                           fontSize: 14,
@@ -242,21 +279,23 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                 Row(
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.edit),
-                      color: Colors.blue,
+                      icon: const Icon(Icons.edit_outlined),
+                      color: Colors.blue.shade700,
                       onPressed: () => _editStudent(student),
+                      tooltip: 'Edit',
                     ),
                     IconButton(
-                      icon: const Icon(Icons.delete),
-                      color: Colors.red,
+                      icon: const Icon(Icons.delete_outline),
+                      color: Colors.red.shade700,
                       onPressed: () =>
                           _deleteStudent(student['id'], student['user_id']),
+                      tooltip: 'Delete',
                     ),
                   ],
                 ),
               ],
             ),
-            const Divider(height: 20),
+            const Divider(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -286,7 +325,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
         const SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(fontSize: 14),
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
         ),
       ],
     );
@@ -309,6 +348,7 @@ class _StudentFormDialog extends StatefulWidget {
 }
 
 class _StudentFormDialogState extends State<_StudentFormDialog> {
+  final _formKey = GlobalKey<FormState>();
   late TextEditingController _fullNameController;
   late TextEditingController _emailController;
   late TextEditingController _usernameController;
@@ -324,40 +364,20 @@ class _StudentFormDialogState extends State<_StudentFormDialog> {
   @override
   void initState() {
     super.initState();
-    if (widget.isEdit && widget.student != null) {
-      _fullNameController = TextEditingController(
-        text: widget.student!['profiles']?['full_name'] ?? '',
-      );
-      _emailController = TextEditingController(
-        text: widget.student!['profiles']?['email'] ?? '',
-      );
-      _usernameController = TextEditingController(
-        text: widget.student!['profiles']?['username'] ?? '',
-      );
-      _passwordController = TextEditingController();
-      _registrationController =
-          TextEditingController(text: widget.student!['registration_number'] ?? '');
-      _rollController = TextEditingController(text: widget.student!['roll_number'] ?? '');
-      _classController = TextEditingController(text: widget.student!['class'] ?? '');
-      _dobController = TextEditingController(text: widget.student!['date_of_birth'] ?? '');
-      _guardianController =
-          TextEditingController(text: widget.student!['guardian_name'] ?? '');
-      _guardianPhoneController =
-          TextEditingController(text: widget.student!['guardian_phone'] ?? '');
-      _addressController = TextEditingController(text: widget.student!['address'] ?? '');
-    } else {
-      _fullNameController = TextEditingController();
-      _emailController = TextEditingController();
-      _usernameController = TextEditingController();
-      _passwordController = TextEditingController();
-      _registrationController = TextEditingController();
-      _rollController = TextEditingController();
-      _classController = TextEditingController();
-      _dobController = TextEditingController();
-      _guardianController = TextEditingController();
-      _guardianPhoneController = TextEditingController();
-      _addressController = TextEditingController();
-    }
+    final s = widget.student;
+    final p = s?['profiles'];
+    
+    _fullNameController = TextEditingController(text: p?['full_name'] ?? '');
+    _emailController = TextEditingController(text: p?['email'] ?? '');
+    _usernameController = TextEditingController(text: p?['username'] ?? '');
+    _passwordController = TextEditingController();
+    _registrationController = TextEditingController(text: s?['registration_number'] ?? '');
+    _rollController = TextEditingController(text: s?['roll_number'] ?? '');
+    _classController = TextEditingController(text: s?['class'] ?? '');
+    _dobController = TextEditingController(text: s?['date_of_birth'] ?? '');
+    _guardianController = TextEditingController(text: s?['guardian_name'] ?? '');
+    _guardianPhoneController = TextEditingController(text: s?['guardian_phone'] ?? '');
+    _addressController = TextEditingController(text: s?['address'] ?? '');
   }
 
   @override
@@ -380,22 +400,30 @@ class _StudentFormDialogState extends State<_StudentFormDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text(widget.isEdit ? 'Edit Student' : 'Add New Student'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildTextField('Full Name', _fullNameController),
-            _buildTextField('Email', _emailController),
-            _buildTextField('Username', _usernameController),
-            if (!widget.isEdit) _buildTextField('Password', _passwordController),
-            _buildTextField('Registration Number', _registrationController),
-            _buildTextField('Roll Number', _rollController),
-            _buildTextField('Class', _classController),
-            _buildTextField('Date of Birth (YYYY-MM-DD)', _dobController),
-            _buildTextField('Guardian Name', _guardianController),
-            _buildTextField('Guardian Phone', _guardianPhoneController),
-            _buildTextField('Address', _addressController),
-          ],
+      content: SizedBox(
+        width: MediaQuery.of(context).size.width * 0.8,
+        child: SingleChildScrollView(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildTextField('Full Name', _fullNameController, required: true),
+                _buildTextField('Email', _emailController, required: true, enabled: !widget.isEdit),
+                _buildTextField('Username', _usernameController, required: true),
+                if (!widget.isEdit) 
+                  _buildTextField('Password', _passwordController, required: true, isPassword: true),
+                const Divider(height: 30),
+                _buildTextField('Registration Number', _registrationController),
+                _buildTextField('Roll Number', _rollController),
+                _buildTextField('Class', _classController),
+                _buildTextField('Date of Birth (YYYY-MM-DD)', _dobController),
+                _buildTextField('Guardian Name', _guardianController),
+                _buildTextField('Guardian Phone', _guardianPhoneController),
+                _buildTextField('Address', _addressController),
+              ],
+            ),
+          ),
         ),
       ),
       actions: [
@@ -403,40 +431,57 @@ class _StudentFormDialogState extends State<_StudentFormDialog> {
           onPressed: () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
-        TextButton(
+        ElevatedButton(
           onPressed: () {
-            widget.onSubmit({
-              'full_name': _fullNameController.text,
-              'email': _emailController.text,
-              'username': _usernameController.text,
-              'password': _passwordController.text,
-              'registration_number': _registrationController.text,
-              'roll_number': _rollController.text,
-              'class': _classController.text,
-              'date_of_birth': _dobController.text,
-              'guardian_name': _guardianController.text,
-              'guardian_phone': _guardianPhoneController.text,
-              'address': _addressController.text,
-            });
-            Navigator.pop(context);
+            if (_formKey.currentState!.validate()) {
+              widget.onSubmit({
+                'full_name': _fullNameController.text.trim(),
+                'email': _emailController.text.trim(),
+                'username': _usernameController.text.trim(),
+                'password': _passwordController.text.trim(),
+                'registration_number': _registrationController.text.trim(),
+                'roll_number': _rollController.text.trim(),
+                'class': _classController.text.trim(),
+                'date_of_birth': _dobController.text.trim(),
+                'guardian_name': _guardianController.text.trim(),
+                'guardian_phone': _guardianPhoneController.text.trim(),
+                'address': _addressController.text.trim(),
+              });
+              Navigator.pop(context);
+            }
           },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.blue.shade800,
+            foregroundColor: Colors.white,
+          ),
           child: const Text('Save'),
         ),
       ],
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller) {
+  Widget _buildTextField(String label, TextEditingController controller, {bool required = false, bool isPassword = false, bool enabled = true}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      child: TextField(
+      child: TextFormField(
         controller: controller,
+        obscureText: isPassword,
+        enabled: enabled,
         decoration: InputDecoration(
           labelText: label,
+          filled: !enabled,
+          fillColor: Colors.grey.shade100,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
           ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         ),
+        validator: required ? (value) {
+          if (value == null || value.isEmpty) {
+            return 'Please enter $label';
+          }
+          return null;
+        } : null,
       ),
     );
   }
