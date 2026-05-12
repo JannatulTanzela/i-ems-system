@@ -101,7 +101,143 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                 'username': data['username'],
               });
 
-              await _supabase.from('students').insert({
+              await _supabase.from('studentsimport 'package
+                      :flutter/material.dart';
+                  import 'package:supabase_flutter/supabase_flutter.dart';
+
+                  class AdminStudentsPage extends StatefulWidget {
+                  const AdminStudentsPage({super.key});
+
+                  @override
+                  State<AdminStudentsPage> createState() => _AdminStudentsPageState();
+                  }
+
+                  class _AdminStudentsPageState extends State<AdminStudentsPage>
+                  {
+                  final SupabaseClient _supabase = Supabase.instance.client;
+                  List<Map<String, dynamic>> _allStudents = [];
+                  List<Map<String, dynamic>> _filteredStudents = [];
+                  bool _isLoading = true;
+                  final TextEditingController _searchController = TextEditingController();
+
+                  @override
+                  void initState() {
+                  super.initState();
+                  _fetchStudents();
+                  }
+
+                  // ডেটা ফেচ করার নতুন এবং সহজ পদ্ধতি
+                  Future<void> _fetchStudents() async {
+                  if (!mounted) return;
+                  setState(() => _isLoading = true);
+                  try {
+                  // আমরা সরাসরি profiles টেবিল থেকে Student রোলের ইউজারদের আনবো
+                  // এবং সাথে তাদের students টেবিলের অতিরিক্ত তথ্য (যদি থাকে) আনবো
+                  final response = await _supabase
+                      .from('profiles')
+                      .select('*, students(*)')
+                      .eq('role', 'Student');
+
+                  if (!mounted) return;
+                  setState(() {
+                  _allStudents = List<Map<String, dynamic>>.from(response);
+                  _filteredStudents = _allStudents;
+                  _isLoading = false;
+                  });
+                  } catch (e) {
+                  debugPrint('Error: $e');
+                  if (mounted) setState(() => _isLoading = false);
+                  }
+                  }
+
+                  void _filterStudents(String query) {
+                  setState(() {
+                  _filteredStudents = _allStudents.where((user) {
+                  final name = (user['full_name'] ?? '').toString().toLowerCase();
+                  final email = (user['email'] ?? '').toString().toLowerCase();
+                  return name.contains(query.toLowerCase()) || email.contains(query.toLowerCase());
+                  }).toList();
+                  });
+                  }
+
+                  @override
+                  Widget build(BuildContext context) {
+                  return Scaffold(
+                  backgroundColor: Colors.white,
+                  body: Column(
+                  children: [
+                  // সার্চ বক্স এবং রিফ্রেশ বাটন
+                  Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                  children: [
+                  Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                  const Text('Student List', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.blue)),
+                  IconButton(onPressed: _fetchStudents, icon: const Icon(Icons.refresh, color: Colors.blue)),
+                  ],
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                  controller: _searchController,
+                  onChanged: _filterStudents,
+                  decoration: InputDecoration(
+                  hintText: 'Search by Name or Email...',
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  ),
+                  ],
+                  ),
+                  ),
+
+                  // স্টুডেন্ট টেবিল
+                  Expanded(
+                  child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                      : _filteredStudents.isEmpty
+                  ? const Center(child: Text('No students found in Database'))
+                      : SingleChildScrollView(
+                  scrollDirection: Axis.vertical,
+                  child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: DataTable(
+                  columns: const [
+                  DataColumn(label: Text('Full Name', style: TextStyle(fontWeight: FontWeight.bold))),
+                  DataColumn(label: Text('Email', style: TextStyle(fontWeight: FontWeight.bold))),
+                  DataColumn(label: Text('Username', style: TextStyle(fontWeight: FontWeight.bold))),
+                  DataColumn(label: Text('Reg No', style: TextStyle(fontWeight: FontWeight.bold))),
+                  DataColumn(label: Text('Actions', style: TextStyle(fontWeight: FontWeight.bold))),
+                  ],
+                  rows: _filteredStudents.map((user) {
+                  // students টেবিলের ডেটা একটি লিস্ট হিসেবে আসে, তাই আমরা প্রথমটি নেবো
+                  final studentData = (user['students'] is List && user['students'].isNotEmpty)
+                  ? user['students'][0]
+                      : null;
+
+                  return DataRow(cells: [
+                  DataCell(Text(user['full_name'] ?? 'N/A')),
+                  DataCell(Text(user['email'] ?? 'N/A')),
+                  DataCell(Text(user['username'] ?? 'N/A')),
+                  DataCell(Text(studentData?['registration_number'] ?? 'Not Set')),
+                  DataCell(Row(
+                  children: [
+                  IconButton(icon: const Icon(Icons.edit, color: Colors.blue, size: 20), onPressed: () {}),
+                  IconButton(icon: const Icon(Icons.delete, color: Colors.red, size: 20), onPressed: () {}),
+                  ],
+                  )),
+                  ]);
+                  }).toList(),
+                  ),
+                  ),
+                  ),
+                  ),
+                  ],
+                  ),
+                  );
+                  }
+                  }').insert({
                 'user_id': authResponse.user!.id,
                 'registration_number': data['registration_number'],
                 'roll_number': data['roll_number'],
