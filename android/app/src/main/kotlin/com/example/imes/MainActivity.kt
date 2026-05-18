@@ -1,4 +1,4 @@
-package com.example.i_ems
+package com.example.imes
 
 import io.flutter.embedding.android.FlutterActivity
 
