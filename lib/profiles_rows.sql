@@ -1,0 +1,1 @@
+INSERT INTO "public"."profiles" ("id", "email", "username", "full_name", "role", "created_at") VALUES ('857d9ef4-8738-48b0-b43c-e05a91ac6059', 'admin@iems.com', 'admin', 'Administrator', 'Admin', '2026-05-18 09:24:09.866089+00');

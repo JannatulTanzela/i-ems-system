@@ -1,6 +1,6 @@
 {
-    "name": "i_ems",
-    "short_name": "i_ems",
+    "name": "imes",
+    "short_name": "imes",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

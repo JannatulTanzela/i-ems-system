@@ -1,0 +1,1 @@
+INSERT INTO "public"."teachers" ("id", "user_id", "username", "email", "employee_id", "subject", "qualification", "experience_years", "department", "phone", "address", "created_at") VALUES ('5860ab57-c752-4ee0-92c8-fe89ee571630', null, 'teacher', 'teacher@mail.com', '1234', 'CSE- Data science', 'BSC', 4, 'Cse', '1234567', 'qwertyuio', '2026-05-18 15:21:51.958294+00');
