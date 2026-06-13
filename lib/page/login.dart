@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../db_con.dart';
 import 'admin/admin_home_page.dart';
+import 'student/student_home_page.dart';
+import 'teacher/teacher_home_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -19,32 +21,115 @@ class _LoginPageState extends State<LoginPage> {
   bool obscurePass = true;
 
   Future login() async {
-    final email = emailController.text.trim();
+    final input = emailController.text.trim();
     final pass = passController.text.trim();
+
+    if (input.isEmpty || pass.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please fill all fields")),
+      );
+      return;
+    }
 
     setState(() => isLoading = true);
 
     try {
-      final res = await DBCon.supabase.auth.signInWithPassword(
-        email: email,
-        password: pass,
-      );
+      String emailToUse = input;
+      String passwordToUse = pass;
 
-      if (res.user != null) {
+      if (role == "student") {
+        // Student login: Direct database query (no Supabase auth needed)
+        try {
+          final response = await DBCon.supabase
+              .from('students')
+              .select()
+              .eq('email', input)
+              .eq('username', pass) // password = username
+              .single();
 
-        if (role == "admin") {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const AdminHomePage()),
+          // If we reach here, student found with matching email and username
+          if (response != null) {
+            // ✅ Login successful - Student data found in database
+            // Pass student data to StudentHomePage
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => StudentHomePage(studentData: response),
+              ),
+            );
+            setState(() => isLoading = false);
+            return;
+          }
+        } catch (e) {
+          // Student not found or credentials don't match
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Invalid email or username")),
           );
+          setState(() => isLoading = false);
+          return;
         }
+      } else if (role == "teacher") {
+        // Teacher login: Direct database query (no Supabase auth needed)
+        try {
+          final response = await DBCon.supabase
+              .from('teachers')
+              .select()
+              .eq('email', input)
+              .eq('username', pass) // password = username
+              .single();
 
-        // future: teacher / student routing
+          // If we reach here, teacher found with matching email and username
+          if (response != null) {
+            // ✅ Login successful - Teacher data found in database
+            // Pass teacher data to TeacherHomePage
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => TeacherHomePage(teacherData: response),
+              ),
+            );
+            setState(() => isLoading = false);
+            return;
+          }
+        } catch (e) {
+          // Teacher not found or credentials don't match
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Invalid email or username")),
+          );
+          setState(() => isLoading = false);
+          return;
+        }
+      } else {
+        // Admin/Teacher: Use Supabase auth
+        final res = await DBCon.supabase.auth.signInWithPassword(
+          email: emailToUse,
+          password: passwordToUse,
+        );
+
+        if (res.user != null) {
+          if (role == "admin") {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const AdminHomePage()),
+            );
+          }
+        }
       }
 
     } catch (e) {
+      print('Login error: $e');
+      String errorMsg = "Login Failed";
+
+      if (e.toString().contains("Invalid login credentials")) {
+        errorMsg = "Invalid email or password";
+      } else if (e.toString().contains("User not found")) {
+        errorMsg = "User not found";
+      } else {
+        errorMsg = "Error: ${e.toString()}";
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Login Failed")),
+        SnackBar(content: Text(errorMsg), duration: const Duration(seconds: 3)),
       );
     }
 
@@ -79,7 +164,6 @@ class _LoginPageState extends State<LoginPage> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-
                       const Icon(Icons.school,
                           size: 70, color: Color(0xFF0288D1)),
 
@@ -95,11 +179,40 @@ class _LoginPageState extends State<LoginPage> {
 
                       const SizedBox(height: 25),
 
-                      // EMAIL
+                      // ROLE DROPDOWN - Must be FIRST for proper state update
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: DropdownButton<String>(
+                          value: role,
+                          isExpanded: true,
+                          underline: const SizedBox(),
+                          items: const [
+                            DropdownMenuItem(value: "admin", child: Text("Admin")),
+                            DropdownMenuItem(value: "teacher", child: Text("Teacher")),
+                            DropdownMenuItem(value: "student", child: Text("Student")),
+                          ],
+                          onChanged: (value) {
+                            setState(() {
+                              role = value!;
+                              emailController.clear();
+                              passController.clear();
+                            });
+                          },
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // EMAIL FIELD - Label changes based on role
                       TextField(
                         controller: emailController,
                         decoration: InputDecoration(
-                          labelText: "Email",
+                          labelText: role == "student" ? "Student Email" : "Email/Username",
+                          hintText: role == "student" ? "Enter your email" : "Enter your email or username",
                           prefixIcon: const Icon(Icons.email),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -109,12 +222,13 @@ class _LoginPageState extends State<LoginPage> {
 
                       const SizedBox(height: 15),
 
-                      // PASSWORD
+                      // PASSWORD FIELD - For all roles (Admin, Teacher, Student)
                       TextField(
                         controller: passController,
                         obscureText: obscurePass,
                         decoration: InputDecoration(
-                          labelText: "Password",
+                          labelText: role == "student" ? "Password (Username/Nickname)" : "Password",
+                          hintText: role == "student" ? "Enter your username/nickname" : "Enter your password",
                           prefixIcon: const Icon(Icons.lock),
                           suffixIcon: IconButton(
                             icon: Icon(obscurePass
@@ -134,31 +248,7 @@ class _LoginPageState extends State<LoginPage> {
 
                       const SizedBox(height: 15),
 
-                      // ROLE DROPDOWN
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: DropdownButton<String>(
-                          value: role,
-                          isExpanded: true,
-                          underline: const SizedBox(),
-                          items: const [
-                            DropdownMenuItem(value: "admin", child: Text("Admin")),
-                            DropdownMenuItem(value: "teacher", child: Text("Teacher")),
-                            DropdownMenuItem(value: "student", child: Text("Student")),
-                          ],
-                          onChanged: (value) {
-                            setState(() {
-                              role = value!;
-                            });
-                          },
-                        ),
-                      ),
-
-                      const SizedBox(height: 25),
+                      const SizedBox(height: 10),
 
                       // LOGIN BUTTON
                       SizedBox(
