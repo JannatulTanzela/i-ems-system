@@ -142,3 +142,104 @@ CREATE POLICY "Allow authenticated delete teachers"
   TO authenticated
   USING (true);
 
+-- 4. classes table
+CREATE TABLE IF NOT EXISTS public.classes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  teacher_id UUID REFERENCES public.teachers(id) ON DELETE CASCADE,
+  class_name TEXT NOT NULL,
+  subject TEXT,
+  class_code TEXT UNIQUE,
+  schedule TEXT,
+  room TEXT,
+  semester TEXT,
+  description TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 5. class_students table (many-to-many relationship)
+CREATE TABLE IF NOT EXISTS public.class_students (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  class_id UUID REFERENCES public.classes(id) ON DELETE CASCADE,
+  student_id UUID REFERENCES public.students(id) ON DELETE CASCADE,
+  enrollment_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  status TEXT DEFAULT 'Active' -- 'Active', 'Dropped'
+);
+
+-- 6. attendance table
+CREATE TABLE IF NOT EXISTS public.attendance (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  class_id UUID REFERENCES public.classes(id) ON DELETE CASCADE,
+  student_id UUID REFERENCES public.students(id) ON DELETE CASCADE,
+  attendance_date DATE NOT NULL,
+  status TEXT NOT NULL DEFAULT 'Present', -- 'Present', 'Absent', 'Late', 'Excused'
+  remarks TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- =============================================
+-- RLS Policies for new tables
+-- =============================================
+
+-- classes table policies
+CREATE POLICY "Allow authenticated read classes"
+  ON public.classes FOR SELECT
+  TO authenticated
+  USING (true);
+
+CREATE POLICY "Allow authenticated insert classes"
+  ON public.classes FOR INSERT
+  TO authenticated
+  WITH CHECK (true);
+
+CREATE POLICY "Allow authenticated update classes"
+  ON public.classes FOR UPDATE
+  TO authenticated
+  USING (true);
+
+CREATE POLICY "Allow authenticated delete classes"
+  ON public.classes FOR DELETE
+  TO authenticated
+  USING (true);
+
+-- class_students table policies
+CREATE POLICY "Allow authenticated read class_students"
+  ON public.class_students FOR SELECT
+  TO authenticated
+  USING (true);
+
+CREATE POLICY "Allow authenticated insert class_students"
+  ON public.class_students FOR INSERT
+  TO authenticated
+  WITH CHECK (true);
+
+CREATE POLICY "Allow authenticated update class_students"
+  ON public.class_students FOR UPDATE
+  TO authenticated
+  USING (true);
+
+CREATE POLICY "Allow authenticated delete class_students"
+  ON public.class_students FOR DELETE
+  TO authenticated
+  USING (true);
+
+-- attendance table policies
+CREATE POLICY "Allow authenticated read attendance"
+  ON public.attendance FOR SELECT
+  TO authenticated
+  USING (true);
+
+CREATE POLICY "Allow authenticated insert attendance"
+  ON public.attendance FOR INSERT
+  TO authenticated
+  WITH CHECK (true);
+
+CREATE POLICY "Allow authenticated update attendance"
+  ON public.attendance FOR UPDATE
+  TO authenticated
+  USING (true);
+
+CREATE POLICY "Allow authenticated delete attendance"
+  ON public.attendance FOR DELETE
+  TO authenticated
+  USING (true);
+

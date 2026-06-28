@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../db_con.dart';
 import '../login.dart';
+import 'classes_page.dart';
+import 'students_page.dart';
+import 'attendance_page.dart';
 
 class TeacherHomePage extends StatefulWidget {
   final Map<String, dynamic>? teacherData;
@@ -18,6 +21,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
   String? subject = "";
   String? employeeId = "";
   String? department = "";
+  String? teacherId = ""; // Add teacher ID
   bool isLoading = true;
 
   @override
@@ -31,6 +35,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
       // If teacher data passed from login, use that directly
       if (widget.teacherData != null) {
         setState(() {
+          teacherId = widget.teacherData!['id'] ?? '';
           teacherName = widget.teacherData!['username'] ?? 'Teacher';
           teacherEmail = widget.teacherData!['email'] ?? '';
           subject = widget.teacherData!['subject'] ?? '';
@@ -52,6 +57,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
             .single();
 
         setState(() {
+          teacherId = response['id'] ?? '';
           teacherName = response['username'] ?? 'Teacher';
           teacherEmail = response['email'] ?? '';
           subject = response['subject'] ?? '';
@@ -86,9 +92,10 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Teacher Dashboard'),
+        title: const Text('Teacher Dashboard', style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.blue[700],
-        elevation: 0,
+        elevation: 2,
+        centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -98,7 +105,16 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
         ],
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(color: Colors.blue[700]),
+                  const SizedBox(height: 16),
+                  Text('Loading dashboard...', style: TextStyle(color: Colors.grey[600])),
+                ],
+              ),
+            )
           : SingleChildScrollView(
               child: Column(
                 children: [
@@ -116,29 +132,55 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 30,
+                              backgroundColor: Colors.white30,
+                              child: Icon(Icons.person, color: Colors.white, size: 32),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    teacherName ?? 'Teacher',
+                                    style: const TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    subject ?? 'No subject assigned',
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.white70,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                         const SizedBox(height: 16),
-                        Text(
-                          teacherName ?? 'Teacher',
-                          style: const TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white10,
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Employee ID: $employeeId',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Colors.white70,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          teacherEmail ?? '',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Colors.white70,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildHeaderInfoRow(Icons.badge, 'Employee ID: $employeeId'),
+                              const SizedBox(height: 6),
+                              _buildHeaderInfoRow(Icons.email, teacherEmail ?? 'No email'),
+                              const SizedBox(height: 6),
+                              _buildHeaderInfoRow(Icons.business, department ?? 'No department'),
+                            ],
                           ),
                         ),
                       ],
@@ -149,35 +191,33 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                   Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Subject card
-                        Card(
-                          elevation: 2,
-                          margin: const EdgeInsets.symmetric(vertical: 8),
-                          child: ListTile(
-                            leading: Icon(
-                              Icons.school,
-                              color: Colors.blue[700],
-                            ),
-                            title: const Text('Subject'),
-                            subtitle: Text(subject ?? 'Not assigned'),
-                            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                          ),
+                        const Text(
+                          'Overview',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                         ),
-                        
-                        // Department card
-                        Card(
-                          elevation: 2,
-                          margin: const EdgeInsets.symmetric(vertical: 8),
-                          child: ListTile(
-                            leading: Icon(
-                              Icons.business,
-                              color: Colors.blue[700],
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildInfoCard(
+                                icon: Icons.school,
+                                title: 'Subject',
+                                subtitle: subject ?? 'Not assigned',
+                                color: Colors.blue,
+                              ),
                             ),
-                            title: const Text('Department'),
-                            subtitle: Text(department ?? 'Not specified'),
-                            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                          ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _buildInfoCard(
+                                icon: Icons.business,
+                                title: 'Department',
+                                subtitle: department ?? 'Not specified',
+                                color: Colors.purple,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -187,64 +227,176 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                   Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('View Classes - Coming Soon')),
-                            );
-                          },
-                          icon: const Icon(Icons.class_),
-                          label: const Text('View Classes'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue[700],
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
+                        const Text(
+                          'Quick Actions',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 12),
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('View Students - Coming Soon')),
-                            );
-                          },
-                          icon: const Icon(Icons.group),
-                          label: const Text('View Students'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue[700],
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _buildActionButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ClassesPage(teacherId: teacherId),
+                                  ),
+                                );
+                              },
+                              icon: Icons.class_,
+                              label: 'Manage Classes',
+                              color: Colors.blue,
+                              description: 'Create and manage your classes',
                             ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('View Attendance - Coming Soon')),
-                            );
-                          },
-                          icon: const Icon(Icons.check_circle),
-                          label: const Text('View Attendance'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue[700],
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                            const SizedBox(height: 12),
+                            _buildActionButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => StudentsPage(teacherId: teacherId),
+                                  ),
+                                );
+                              },
+                              icon: Icons.group,
+                              label: 'Manage Students',
+                              color: Colors.teal,
+                              description: 'Add/remove students from classes',
                             ),
-                          ),
+                            const SizedBox(height: 12),
+                            _buildActionButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => AttendancePage(teacherId: teacherId),
+                                  ),
+                                );
+                              },
+                              icon: Icons.check_circle,
+                              label: 'Mark Attendance',
+                              color: Colors.orange,
+                              description: 'Record student attendance',
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
+                  const SizedBox(height: 24),
                 ],
               ),
             ),
+    );
+  }
+
+  Widget _buildHeaderInfoRow(IconData icon, String text) {
+    return Row(
+      children: [
+        Icon(icon, color: Colors.white70, size: 16),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(fontSize: 12, color: Colors.white70),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInfoCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required MaterialColor color,
+  }) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border(top: BorderSide(color: color[700]!, width: 4)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: color[700], size: 32),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required VoidCallback onPressed,
+    required IconData icon,
+    required String label,
+    required MaterialColor color,
+    required String description,
+  }) {
+    return Material(
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey[200]!),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color[100],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: color[700], size: 28),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      description,
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios, color: Colors.grey[400], size: 16),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
