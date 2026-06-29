@@ -12,11 +12,10 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-
   final emailController = TextEditingController();
   final passController = TextEditingController();
 
-  String role = "admin";
+  String role = 'admin';
   bool isLoading = false;
   bool obscurePass = true;
 
@@ -26,7 +25,7 @@ class _LoginPageState extends State<LoginPage> {
 
     if (input.isEmpty || pass.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please fill all fields")),
+        const SnackBar(content: Text('Please fill all fields')),
       );
       return;
     }
@@ -37,7 +36,7 @@ class _LoginPageState extends State<LoginPage> {
       String emailToUse = input;
       String passwordToUse = pass;
 
-      if (role == "student") {
+      if (role == 'student') {
         // Student login: Direct database query (no Supabase auth needed)
         try {
           final response = await DBCon.supabase
@@ -68,7 +67,7 @@ class _LoginPageState extends State<LoginPage> {
           setState(() => isLoading = false);
           return;
         }
-      } else if (role == "teacher") {
+      } else if (role == 'teacher') {
         // Teacher login: Direct database query (no Supabase auth needed)
         try {
           final response = await DBCon.supabase
@@ -107,7 +106,7 @@ class _LoginPageState extends State<LoginPage> {
         );
 
         if (res.user != null) {
-          if (role == "admin") {
+          if (role == 'admin') {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(builder: (_) => const AdminHomePage()),
@@ -117,15 +116,15 @@ class _LoginPageState extends State<LoginPage> {
       }
 
     } catch (e) {
-      print('Login error: $e');
-      String errorMsg = "Login Failed";
+      debugPrint('Login error: $e');
+      String errorMsg = 'Login failed';
 
-      if (e.toString().contains("Invalid login credentials")) {
-        errorMsg = "Invalid email or password";
-      } else if (e.toString().contains("User not found")) {
-        errorMsg = "User not found";
+      if (e.toString().contains('Invalid login credentials')) {
+        errorMsg = 'Invalid email or password';
+      } else if (e.toString().contains('User not found')) {
+        errorMsg = 'User not found';
       } else {
-        errorMsg = "Error: ${e.toString()}";
+        errorMsg = 'Error: ${e.toString()}';
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -138,62 +137,67 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    final roleLabels = {
+      'admin': 'Admin',
+      'teacher': 'Teacher',
+      'student': 'Student',
+    };
+
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              Color(0xFF4FC3F7),
-              Color(0xFF0288D1),
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+            colors: [Color(0xFF0F4C81), Color(0xFF1E88E5)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
         ),
         child: Center(
           child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(20),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 440),
               child: Card(
-                elevation: 12,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
+                elevation: 10,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                 child: Padding(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(24),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.school,
-                          size: 70, color: Color(0xFF0288D1)),
-
-                      const SizedBox(height: 10),
-
-                      const Text(
-                        "IEMS Login",
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-
-                      const SizedBox(height: 25),
-
-                      // ROLE DROPDOWN - Must be FIRST for proper state update
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey),
-                          borderRadius: BorderRadius.circular(12),
+                          color: const Color(0xFF1E88E5).withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Icon(Icons.school, size: 68, color: Color(0xFF1E88E5)),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'IEMS Login',
+                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Sign in as ${roleLabels[role]}',
+                        style: const TextStyle(fontSize: 14, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 20),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(14),
                         ),
                         child: DropdownButton<String>(
                           value: role,
                           isExpanded: true,
                           underline: const SizedBox(),
                           items: const [
-                            DropdownMenuItem(value: "admin", child: Text("Admin")),
-                            DropdownMenuItem(value: "teacher", child: Text("Teacher")),
-                            DropdownMenuItem(value: "student", child: Text("Student")),
+                            DropdownMenuItem(value: 'admin', child: Text('Admin')),
+                            DropdownMenuItem(value: 'teacher', child: Text('Teacher')),
+                            DropdownMenuItem(value: 'student', child: Text('Student')),
                           ],
                           onChanged: (value) {
                             setState(() {
@@ -204,79 +208,60 @@ class _LoginPageState extends State<LoginPage> {
                           },
                         ),
                       ),
-
-                      const SizedBox(height: 20),
-
-                      // EMAIL FIELD - Label changes based on role
+                      const SizedBox(height: 16),
                       TextField(
                         controller: emailController,
                         decoration: InputDecoration(
-                          labelText: role == "student" ? "Student Email" : "Email/Username",
-                          hintText: role == "student" ? "Enter your email" : "Enter your email or username",
-                          prefixIcon: const Icon(Icons.email),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                          labelText: role == 'student' ? 'Student Email' : 'Email / Username',
+                          hintText: role == 'student' ? 'Enter your email' : 'Enter your email or username',
+                          prefixIcon: const Icon(Icons.email_outlined),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: const BorderSide(color: Color(0xFF1E88E5), width: 1.6),
                           ),
                         ),
                       ),
-
-                      const SizedBox(height: 15),
-
-                      // PASSWORD FIELD - For all roles (Admin, Teacher, Student)
+                      const SizedBox(height: 14),
                       TextField(
                         controller: passController,
                         obscureText: obscurePass,
                         decoration: InputDecoration(
-                          labelText: role == "student" ? "Password (Username/Nickname)" : "Password",
-                          hintText: role == "student" ? "Enter your username/nickname" : "Enter your password",
-                          prefixIcon: const Icon(Icons.lock),
+                          labelText: role == 'student' ? 'Password (Username/Nickname)' : 'Password',
+                          hintText: role == 'student' ? 'Enter your username/nickname' : 'Enter your password',
+                          prefixIcon: const Icon(Icons.lock_outline),
                           suffixIcon: IconButton(
-                            icon: Icon(obscurePass
-                                ? Icons.visibility
-                                : Icons.visibility_off),
+                            icon: Icon(obscurePass ? Icons.visibility_outlined : Icons.visibility_off_outlined),
                             onPressed: () {
                               setState(() {
                                 obscurePass = !obscurePass;
                               });
                             },
                           ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: const BorderSide(color: Color(0xFF1E88E5), width: 1.6),
                           ),
                         ),
                       ),
-
-                      const SizedBox(height: 15),
-
-                      const SizedBox(height: 10),
-
-                      // LOGIN BUTTON
+                      const SizedBox(height: 20),
                       SizedBox(
                         width: double.infinity,
-                        height: 50,
-                        child: ElevatedButton(
+                        height: 52,
+                        child: FilledButton(
                           onPressed: isLoading ? null : login,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF0288D1),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF1E88E5),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                           ),
                           child: isLoading
-                              ? const CircularProgressIndicator(color: Colors.white)
-                              : const Text(
-                                  "Login",
-                                  style: TextStyle(fontSize: 16),
-                                ),
+                              ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                              : const Text('Login', style: TextStyle(fontSize: 16)),
                         ),
                       ),
-
-                      const SizedBox(height: 10),
-
-                      const Text(
-                        "Powered by IEMS",
-                        style: TextStyle(fontSize: 12, color: Colors.grey),
-                      ),
+                      const SizedBox(height: 12),
+                      const Text('Powered by IEMS', style: TextStyle(fontSize: 12, color: Colors.grey)),
                     ],
                   ),
                 ),

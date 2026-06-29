@@ -176,6 +176,17 @@ CREATE TABLE IF NOT EXISTS public.attendance (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- 7. class_sessions table (teacher can add date/time, title, description and link per course)
+CREATE TABLE IF NOT EXISTS public.class_sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  class_id UUID REFERENCES public.classes(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  description TEXT,
+  link TEXT,
+  session_datetime TIMESTAMP WITH TIME ZONE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- =============================================
 -- RLS Policies for new tables
 -- =============================================
@@ -240,6 +251,27 @@ CREATE POLICY "Allow authenticated update attendance"
 
 CREATE POLICY "Allow authenticated delete attendance"
   ON public.attendance FOR DELETE
+  TO authenticated
+  USING (true);
+
+-- class_sessions table policies
+CREATE POLICY "Allow authenticated read class_sessions"
+  ON public.class_sessions FOR SELECT
+  TO authenticated
+  USING (true);
+
+CREATE POLICY "Allow authenticated insert class_sessions"
+  ON public.class_sessions FOR INSERT
+  TO authenticated
+  WITH CHECK (true);
+
+CREATE POLICY "Allow authenticated update class_sessions"
+  ON public.class_sessions FOR UPDATE
+  TO authenticated
+  USING (true);
+
+CREATE POLICY "Allow authenticated delete class_sessions"
+  ON public.class_sessions FOR DELETE
   TO authenticated
   USING (true);
 
